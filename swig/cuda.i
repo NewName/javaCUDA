@@ -61,11 +61,15 @@
 %}*/
 
 %pointer_class(int,CPint);
+%pointer_class(float,CPfloat);
 %pointer_class(CUcontext,CUPContext);
 %pointer_class(CUmodule,CUPModule);
 %pointer_class(CUfunction,CUPFunction);
 %pointer_class(CUdeviceptr,CUDevicePointer);
+%pointer_class(CUstream,CUPStream);
+%pointer_class(CUevent,CUPEvent);
 
 
 
-%pointer_cast(signed char *, void *, toPVoid)
+%pointer_cast(signed char *, void *, toPVoid);
+%pointer_cast(int, CUstream, toStream);

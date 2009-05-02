@@ -82,12 +82,23 @@ public class Function {
 	 * @param args An array containing the arguments for the function.
 	 */
 	public void call(Argument[] args) {
+		call(args, Util.zeroStream());
+	}
+	
+	/**
+	 * Call the function with the given arguments and place it in the given stream at this point.
+	 * @param args
+	 */
+	public void call(Argument[] args, Stream stream) {
 		int offset = 0;
 		for (Argument a : args) {
 			offset += a.setParam(function, offset);
 		}
 		Util.safeCall(Cuda.cuParamSetSize(function.value(), offset));
-		Util.safeCall(Cuda.cuLaunchGrid(function.value(), grid.x, grid.y));
+		Util.safeCall(Cuda.cuLaunchGridAsync(
+				function.value(), grid.x, grid.y, 
+				stream.getValue().value()
+			));
 	}
 	
 	public static class BlockSize {

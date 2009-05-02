@@ -19,12 +19,24 @@
 
 package org.lambdacomplex.nn.javacuda;
 
-import org.lambdacomplex.nn.javacuda.swig.CUresult;
+import org.lambdacomplex.nn.javacuda.swig.*;
 
 class Util {
+	private static Stream zeroStream = null;
+	
 	public static void safeCall(CUresult result) {
 		if (result != CUresult.CUDA_SUCCESS) {
 			throw new CudaAPIError(result.toString());
 		}
+	}
+	
+	public static Stream zeroStream() {
+		if (zeroStream == null) {
+			CUPStream result = new CUPStream();
+			result.assign(Cuda.toStream(0));
+			zeroStream = new Stream(result);
+		}
+		
+		return zeroStream;
 	}
 }
