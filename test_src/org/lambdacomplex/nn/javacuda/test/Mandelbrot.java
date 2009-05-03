@@ -37,7 +37,6 @@ public class Mandelbrot {
 		System.out.println("Allocating device");
 		Device dev = Device.getMaxGFlopsDevice();
 		Context ctx = dev.getContext();
-		ctx.create();
 		
 		System.out.println("Compiling kernel");
 		Cubin cubin = new Cubin(getKernel());
@@ -73,13 +72,10 @@ public class Mandelbrot {
 		
 		function.setSharedMemory(33);
 		function.call(new Function.Argument[]{
-
 				new Function.PointerArgument(real_gpu),
 				new Function.PointerArgument(imaginary_gpu),
 				new Function.IntegerArgument(1000),
 				new Function.IntegerArgument(1000),
-
-
 			});
 		
 		System.out.println("Retreiving data");
@@ -94,11 +90,6 @@ public class Mandelbrot {
 				result[x][y] = resultBytes.getFloat(i);
 			}
 		}
-		
-		module.unload();
-		real_gpu.free();
-		imaginary_gpu.free();
-		ctx.destroy();
 		
 		displayResults(result);
 	}

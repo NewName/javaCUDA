@@ -29,7 +29,6 @@ import org.lambdacomplex.nn.javacuda.swig.*;
 public class Stream {
 	private Context context;
 	private CUPStream stream;
-	private boolean destroyed;
 	
 	/**
 	 * Create a stream
@@ -37,17 +36,21 @@ public class Stream {
 	protected Stream(Context ctx) {
 		context = ctx;
 		stream = new CUPStream();
+		stream.setMemoryManaged(false);
 		long flags = 0; // currently required by the API
 		synchronized (context) {
 			context.push();
 			Util.safeCall(Cuda.cuStreamCreate(stream.cast(), flags));
 			Context.popCurrent();
 		}
-		destroyed = false;
 	}
 	
 	protected Stream(CUPStream st) {
 		stream = st;
+	}
+	
+	public boolean isDestroyed() {
+		return stream == null;
 	}
 	
 	/**
@@ -55,11 +58,21 @@ public class Stream {
 	 */
 	public void destroy() {
 		synchronized (context) {
+			if (isDestroyed()) return;
 			context.push();
 			Util.safeCall(Cuda.cuStreamDestroy(stream.value()));
 			Context.popCurrent();
+			stream.delete();
+			stream = null;
 		}
-		destroyed = true;
+	}
+	
+	public void finalize() throws Throwable {
+		try {
+			destroy();
+		} finally {
+			super.finalize();
+		}
 	}
 	
 	/**
@@ -106,11 +119,11 @@ public class Stream {
 	public static class Event {
 		private Context context;
 		private CUPEvent event;
-		private boolean destroyed;
 		
 		protected Event(Stream stream) {
 			context = stream.context;
 			event = new CUPEvent();
+			event.setMemoryManaged(false);
 			long flags = 0; // currently required by the API
 			synchronized (context) {
 				context.push();
@@ -121,7 +134,6 @@ public class Stream {
 					));
 				Context.popCurrent();
 			}
-			destroyed = false;
 		}
 		
 		/**
@@ -158,16 +170,30 @@ public class Stream {
 			}
 		}
 		
+		public boolean isDestroyed() {
+			return event == null;
+		}
+		
 		/**
 		 * Destroy this event.
 		 */
-		public void destory() {
+		public void destroy() {
 			synchronized (context) {
+				if (isDestroyed()) return;
 				context.push();
 				Util.safeCall(Cuda.cuEventDestroy(event.value()));
 				Context.popCurrent();
+				event.delete();
+				event = null;
 			}
-			destroyed = true;
+		}
+		
+		public void finalize() throws Throwable {
+			try {
+				destroy();
+			} finally {
+				super.finalize();
+			}
 		}
 		
 		/**

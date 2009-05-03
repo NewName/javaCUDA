@@ -47,7 +47,6 @@ public class Context {
 		Util.safeCall(Cuda.cuCtxGetDevice(device.cast()));
 		
 		Context result = new Context(ctx);
-		result.deviceID = device.value();
 		return result; 
 	}
 	
@@ -55,12 +54,9 @@ public class Context {
 	 * Disassociates the current context from the thread (popping it from the context stack).
 	 * 
 	 * The context must have a usage count of 1. The context then becomes a floating context.
-	 * @return The context previously associated with this thread (the context on the top of the stack).
 	 */
-	protected static Context popCurrent() {
-		CUPContext ctx = new CUPContext();
-		Util.safeCall(Cuda.cuCtxPopCurrent(ctx.cast()));
-		return new Context(ctx);
+	protected static void popCurrent() {
+		Util.safeCall(Cuda.cuCtxPopCurrent(null));
 	}
 	
 	/**
@@ -85,13 +81,12 @@ public class Context {
 	}
 	
 	protected CUPContext context;
-	private Flags flag;
-	private int deviceID;
 	
-	protected Context(int deviceID) {
-		context = null;
-		this.deviceID = deviceID;
-		flag = Flags.SCHEDULER_AUTO;
+	protected Context(int deviceID, Flags flag) {
+		context = new CUPContext();
+		context.setMemoryManaged(false);
+		Util.safeCall(Cuda.cuCtxCreate(context.cast(), flag.flag.swigValue(), deviceID));
+		popCurrent();
 	}
 	
 	protected Context(CUPContext context) {
@@ -105,27 +100,6 @@ public class Context {
 		
 		protected CUctx_flags flag;
 		Flags (CUctx_flags f) { flag = f; }
-	}
-	
-	/**
-	 * Set the flag this context uses during initialisation.
-	 * @param flag The flag to be used.
-	 */
-	public void setFlag(Flags flag) {
-		if (context != null) throw new IllegalStateException("Context already created.");
-		this.flag = flag;
-	}
-	
-	/**
-	 * Initialise this context and associate it with the current thread.
-	 * 
-	 * Equivalent to cuCtxCreate. Flags are set using the setFlag method.
-	 */
-	public void create() {
-		if (context != null) throw new IllegalStateException("Context allready created.");
-		context = new CUPContext();
-		Util.safeCall(Cuda.cuCtxCreate(context.cast(), flag.flag.swigValue(), deviceID));
-		popCurrent();
 	}
 	
 	public void synchronise() {
@@ -165,10 +139,22 @@ public class Context {
 	
 	/**
 	 * Destroy this context.
-	 * 
-	 * If the usage count is not 1, or this context is being used by another thread this function will fail with an exception. Equivalent to cuCtxDestroy.
 	 */
 	public void destroy() {
-		Util.safeCall(Cuda.cuCtxDestroy(context.value()));
+		synchronized (this) {
+			if (context == null) return;
+			push();
+			Util.safeCall(Cuda.cuCtxDestroy(context.value()));
+			context.delete();
+			context = null;
+		}
+	}
+	
+	public void finalize() throws Throwable {
+		try {
+			destroy();
+		} finally {
+			super.finalize();
+		}
 	}
 }

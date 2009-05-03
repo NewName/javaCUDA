@@ -45,7 +45,7 @@
 %array_class(signed char,CUByteArray);
 
 %include "cpointer.i"
-/*%typemap(javacode) SWIGTYPE %{
+%typemap(javacode) SWIGTYPE %{
   protected boolean swigMemManage = true;
 
   public void setMemoryManaged(boolean b) {
@@ -58,7 +58,7 @@
     if (!swigMemManage) return;
     delete();
   }
-%}*/
+%}
 
 %pointer_class(int,CPint);
 %pointer_class(float,CPfloat);

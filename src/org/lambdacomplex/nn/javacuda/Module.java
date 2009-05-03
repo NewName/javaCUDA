@@ -29,17 +29,16 @@ import org.lambdacomplex.nn.javacuda.swig.*;
 public class Module {
 	private Context context;
 	private CUPModule module;
-	protected boolean loaded;
 	
 	protected Module(Context ctx, Cubin cubin) {
 		context = ctx;
 		module = new CUPModule();
+		module.setMemoryManaged(false);
 		synchronized (context) {
 			context.push();
 			Util.safeCall(Cuda.cuModuleLoad(module.cast(), cubin.getCubinFile().getAbsolutePath()));
 			Context.popCurrent();
 		}
-		loaded = true;
 	}
 	
 	/**
@@ -48,8 +47,11 @@ public class Module {
 	 * @return The requested function.
 	 */
 	public Function getFunction(String name) {
-		if (!loaded) throw new IllegalStateException();
 		return new Function(context, module, name);
+	}
+	
+	public boolean isUnloaded() {
+		return module == null;
 	}
 	
 	/**
@@ -59,18 +61,20 @@ public class Module {
 	 */
 	public void unload() {
 		synchronized (context) {
+			if (isUnloaded()) return;
 			context.push();
 			Util.safeCall(Cuda.cuModuleUnload(module.value()));
 			Context.popCurrent();
+			module.delete();
+			module = null;
 		}
-		loaded = false;
 	}
 	
-	/*public void finalize() throws Throwable {
+	public void finalize() throws Throwable {
 		try {
-
+			unload();
 		} finally {
 			super.finalize();
 		}
-	}*/
+	}
 }

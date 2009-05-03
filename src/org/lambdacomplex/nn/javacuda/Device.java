@@ -19,6 +19,7 @@
 
 package org.lambdacomplex.nn.javacuda;
 
+import org.lambdacomplex.nn.javacuda.Context.Flags;
 import org.lambdacomplex.nn.javacuda.swig.*;
 
 /**
@@ -87,10 +88,20 @@ public class Device {
 	}
 	
 	/**
-	 * Gets a CUDA context for this device.
+	 * Gets a CUDA context for this device with the default flag.
 	 * @return The Context object encapsulating the CUDA context.
 	 */
 	public Context getContext() {
-		return new Context(deviceID);
+		return new Context(deviceID, Flags.SCHEDULER_AUTO);
+	}
+	
+	
+	/**
+	 * Get a CUDA context for this device with the given flag.
+	 * @param flag The flag to create the context with.
+	 * @return The Context object encapsulating the CUDA context.
+	 */
+	public Context getContext(Context.Flags flag) {
+		return new Context(deviceID, flag);
 	}
 }

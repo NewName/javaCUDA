@@ -50,7 +50,6 @@ public class DevicePointer {
 	private Context context;
 	private CUDevicePointer devPtr;
 	private long size;
-	protected boolean freed;
 	
 	/**
 	 * Allocate memory on the device. This pointer will then point to it.
@@ -59,13 +58,13 @@ public class DevicePointer {
 	protected DevicePointer(Context ctx, long size) {
 		context = ctx;
 		devPtr = new CUDevicePointer();
+		devPtr.setMemoryManaged(false);
 		this.size = size;
 		synchronized (context) {
 			context.push();
 			Util.safeCall(Cuda.cuMemAlloc(devPtr.cast(), size));
 			Context.popCurrent();
 		}
-		freed = false;
 	}
 
 	/*public void copy(byte[] data) {
@@ -85,7 +84,7 @@ public class DevicePointer {
 	 * @param data The NativeByteArray object containing the data.
 	 */
 	public void copyFrom(NativeByteArray data) {
-		if (freed) throw new IllegalStateException();
+		if (isFreed()) throw new IllegalStateException();
 		if (data.getByteSize() > size) throw new IllegalArgumentException();
 		
 		SWIGTYPE_p_void voidData = Cuda.toPVoid(data.getNativePointer());
@@ -101,7 +100,7 @@ public class DevicePointer {
 	 * @param dest The NativeByteArray object to copy the data into.
 	 */
 	public void copyTo(NativeByteArray dest) {
-		if (freed) throw new IllegalStateException();
+		if (isFreed()) throw new IllegalStateException();
 		if (dest.getByteSize() < size) throw new IllegalArgumentException();
 		
 		SWIGTYPE_p_void voidDest = Cuda.toPVoid(dest.getNativePointer());
@@ -113,24 +112,34 @@ public class DevicePointer {
 	}
 	
 	/**
+	 * Returns whether the memory pointed to by this poiner has been freed.
+	 * @return Whether the memory is freed.
+	 */
+	public boolean isFreed() {
+		return devPtr == null;
+	}
+	
+	/**
 	 * Deallocate the memory pointed to by this pointer.
 	 */
 	public void free() {
 		synchronized (context) {
+			if (isFreed()) return;
 			context.push();
 			Util.safeCall(Cuda.cuMemFree(devPtr.value()));
 			Context.popCurrent();
+			devPtr.delete();
+			devPtr = null;
 		}
-		freed = true;
 	}
 	
-	/*public void finalize() throws Throwable {
+	public void finalize() throws Throwable {
 		try {
-		
+			free();
 		} finally {
 			super.finalize();
 		}
-	}*/
+	}
 	
 	protected long getValue() {
 		return devPtr.value();
