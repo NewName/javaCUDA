@@ -49,7 +49,7 @@ public class Mandelbrot {
 		}
 		
 		System.out.println("Loading kernel");
-		Module module = Context.loadCubin(cubin);
+		Module module = ctx.loadCubin(cubin);
 		Function function = module.getFunction("squarecmplx");
 		
 		System.out.println("Allocating input");
@@ -64,8 +64,8 @@ public class Mandelbrot {
 		
 		
 		System.out.println("Loading input");
-		DevicePointer real_gpu = DevicePointer.toDevice(real.get1DArray());
-		DevicePointer imaginary_gpu = DevicePointer.toDevice(imaginary.get1DArray());
+		DevicePointer real_gpu = DevicePointer.toDevice(ctx, real.get1DArray());
+		DevicePointer imaginary_gpu = DevicePointer.toDevice(ctx, imaginary.get1DArray());
 		
 		System.out.println("Calling kernel");
 		function.setBlockSize(new Function.BlockSize(16,16,1));
@@ -142,7 +142,7 @@ public class Mandelbrot {
 	public static Reader getKernel() {
 		String kernel = 
 		"extern \"C\" __global__ void squarecmplx(float *real, float *imaginary,"+
-		"			 int *itr, int resX, int resY, int maxItr) {"+
+		"			 int resX, int resY) {"+ //int *itr, , int maxItr
 		"    int x = blockIdx.x * blockDim.x + threadIdx.x;"+
 		"    int y = blockIdx.y * blockDim.y + threadIdx.y;"+
 

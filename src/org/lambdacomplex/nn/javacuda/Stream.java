@@ -27,15 +27,23 @@ import org.lambdacomplex.nn.javacuda.swig.*;
  *
  */
 public class Stream {
+	private Context context;
 	private CUPStream stream;
+	private boolean destroyed;
 	
 	/**
 	 * Create a stream
 	 */
-	public Stream() {
+	protected Stream(Context ctx) {
+		context = ctx;
 		stream = new CUPStream();
 		long flags = 0; // currently required by the API
-		Util.safeCall(Cuda.cuStreamCreate(stream.cast(), flags));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuStreamCreate(stream.cast(), flags));
+			Context.popCurrent();
+		}
+		destroyed = false;
 	}
 	
 	protected Stream(CUPStream st) {
@@ -46,7 +54,12 @@ public class Stream {
 	 * Destroy this stream
 	 */
 	public void destroy() {
-		Util.safeCall(Cuda.cuStreamDestroy(stream.value()));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuStreamDestroy(stream.value()));
+			Context.popCurrent();
+		}
+		destroyed = true;
 	}
 	
 	/**
@@ -56,7 +69,12 @@ public class Stream {
 	 * @return Whether tasks still remain to be completed.
 	 */
 	public boolean isReady() {
-		CUresult result = Cuda.cuStreamQuery(stream.value());
+		CUresult result;
+		synchronized (context) {
+			context.push();
+			result = Cuda.cuStreamQuery(stream.value());
+			Context.popCurrent();
+		}
 		
 		if (result == CUresult.CUDA_SUCCESS) {
 			return true;
@@ -73,7 +91,11 @@ public class Stream {
 	 * Blocks the current thread until all associated tasks are complete.
 	 */
 	public void synchronise() {
-		Util.safeCall(Cuda.cuStreamSynchronize(stream.value()));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuStreamSynchronize(stream.value()));
+			Context.popCurrent();
+		}
 	}
 	
 	/**
@@ -82,16 +104,24 @@ public class Stream {
 	 *
 	 */
 	public static class Event {
+		private Context context;
 		private CUPEvent event;
+		private boolean destroyed;
 		
 		protected Event(Stream stream) {
+			context = stream.context;
 			event = new CUPEvent();
 			long flags = 0; // currently required by the API
-			Util.safeCall(Cuda.cuEventCreate(event.cast(), flags));
-			Util.safeCall(Cuda.cuEventRecord(
-					event.value(), 
-					stream.stream.value()
-				));
+			synchronized (context) {
+				context.push();
+				Util.safeCall(Cuda.cuEventCreate(event.cast(), flags));
+				Util.safeCall(Cuda.cuEventRecord(
+						event.value(), 
+						stream.stream.value()
+					));
+				Context.popCurrent();
+			}
+			destroyed = false;
 		}
 		
 		/**
@@ -99,7 +129,12 @@ public class Stream {
 		 * @return If this event has been reached.
 		 */
 		public boolean isReached() {
-			CUresult result = Cuda.cuEventQuery(event.value());
+			CUresult result;
+			synchronized (context) {
+				context.push();
+				result = Cuda.cuEventQuery(event.value());
+				Context.popCurrent();
+			}
 			
 			if (result == CUresult.CUDA_SUCCESS) {
 				return true;
@@ -116,14 +151,23 @@ public class Stream {
 		 * Blocks the current thread until this event has been reached by the associated stream.
 		 */
 		public void synchronise() {
-			Util.safeCall(Cuda.cuEventSynchronize(event.value()));
+			synchronized (context) {
+				context.push();
+				Util.safeCall(Cuda.cuEventSynchronize(event.value()));
+				Context.popCurrent();
+			}
 		}
 		
 		/**
 		 * Destroy this event.
 		 */
 		public void destory() {
-			Util.safeCall(Cuda.cuEventDestroy(event.value()));
+			synchronized (context) {
+				context.push();
+				Util.safeCall(Cuda.cuEventDestroy(event.value()));
+				Context.popCurrent();
+			}
+			destroyed = true;
 		}
 		
 		/**
@@ -136,10 +180,16 @@ public class Stream {
 		 */
 		public static float elapsedTime(Event start, Event end) {
 			// TODO: create a specfic exception if the events have not been recorded yet.
+			// TODO: find out the requirements on context.
+			Context context = start.context;
 			CPfloat result = new CPfloat();
-			Util.safeCall(Cuda.cuEventElapsedTime(
+			synchronized (context) {
+				context.push();
+				Util.safeCall(Cuda.cuEventElapsedTime(
 					result.cast(), start.event.value(), end.event.value()
 				));
+				Context.popCurrent();
+			}
 			return result.value();
 		}
 	}

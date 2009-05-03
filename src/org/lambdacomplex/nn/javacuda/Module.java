@@ -27,12 +27,18 @@ import org.lambdacomplex.nn.javacuda.swig.*;
  *
  */
 public class Module {
+	private Context context;
 	private CUPModule module;
 	protected boolean loaded;
 	
-	protected Module(Cubin cubin) {
+	protected Module(Context ctx, Cubin cubin) {
+		context = ctx;
 		module = new CUPModule();
-		Util.safeCall(Cuda.cuModuleLoad(module.cast(), cubin.getCubinFile().getAbsolutePath()));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuModuleLoad(module.cast(), cubin.getCubinFile().getAbsolutePath()));
+			Context.popCurrent();
+		}
 		loaded = true;
 	}
 	
@@ -43,7 +49,7 @@ public class Module {
 	 */
 	public Function getFunction(String name) {
 		if (!loaded) throw new IllegalStateException();
-		return new Function(module, name);
+		return new Function(context, module, name);
 	}
 	
 	/**
@@ -52,7 +58,11 @@ public class Module {
 	 * Call this method once the module becomes unused. This will prevent memory leaks.
 	 */
 	public void unload() {
-		Util.safeCall(Cuda.cuModuleUnload(module.value()));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuModuleUnload(module.value()));
+			Context.popCurrent();
+		}
 		loaded = false;
 	}
 	

@@ -31,13 +31,19 @@ import org.lambdacomplex.nn.javacuda.swig.*;
  *
  */
 public class Function {
+	private Context context;
 	private CUPFunction function;
 	private GridSize grid;
 	private BlockSize block;
 	
-	protected Function(CUPModule module, String name) {
+	protected Function(Context ctx, CUPModule module, String name) {
+		context = ctx;
 		function = new CUPFunction();
-		Util.safeCall(Cuda.cuModuleGetFunction(function.cast(), module.value(), name));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuModuleGetFunction(function.cast(), module.value(), name));
+			Context.popCurrent();
+		}
 	}
 	
 	/**
@@ -45,7 +51,6 @@ public class Function {
 	 * @param size The size of the block.
 	 */
 	public void setBlockSize(BlockSize size) {
-		Util.safeCall(Cuda.cuFuncSetBlockShape(function.value(), size.x, size.y, size.z));
 		block = size;
 	}
 	
@@ -70,7 +75,11 @@ public class Function {
 	 * @param size The amount of memory in bytes.
 	 */
 	public void setSharedMemory(long size) {
-		Util.safeCall(Cuda.cuFuncSetSharedSize(function.value(), size));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuFuncSetSharedSize(function.value(), size));
+			Context.popCurrent();
+		}
 	}
 	
 	/**
@@ -90,15 +99,23 @@ public class Function {
 	 * @param args
 	 */
 	public void call(Argument[] args, Stream stream) {
-		int offset = 0;
-		for (Argument a : args) {
-			offset += a.setParam(function, offset);
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuFuncSetBlockShape(function.value(), block.x, block.y, block.z));
+			
+			int offset = 0;
+			for (Argument a : args) {
+				offset += a.setParam(function, offset);
+			}
+			
+			Util.safeCall(Cuda.cuParamSetSize(function.value(), offset));
+			Util.safeCall(Cuda.cuLaunchGrid(
+					function.value(), grid.x, grid.y//, 
+					//stream.getValue().value()
+				));
+			Context.syncWithCurrent();
+			Context.popCurrent();
 		}
-		Util.safeCall(Cuda.cuParamSetSize(function.value(), offset));
-		Util.safeCall(Cuda.cuLaunchGridAsync(
-				function.value(), grid.x, grid.y, 
-				stream.getValue().value()
-			));
 	}
 	
 	public static class BlockSize {

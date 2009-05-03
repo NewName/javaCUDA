@@ -38,7 +38,7 @@ public class Context {
 	 * Equivalent to cuCtxAttach.
 	 * @return The context currently associated with this thread.
 	 */
-	public static Context attachCurrent() {
+	protected static Context attachCurrent() {
 		CUPContext ctx = new CUPContext();
 		int flags = 0; // this is a must, as stated in the reference
 		Util.safeCall(Cuda.cuCtxAttach(ctx.cast(), flags));
@@ -57,7 +57,7 @@ public class Context {
 	 * The context must have a usage count of 1. The context then becomes a floating context.
 	 * @return The context previously associated with this thread (the context on the top of the stack).
 	 */
-	public static Context popCurrent() {
+	protected static Context popCurrent() {
 		CUPContext ctx = new CUPContext();
 		Util.safeCall(Cuda.cuCtxPopCurrent(ctx.cast()));
 		return new Context(ctx);
@@ -69,7 +69,7 @@ public class Context {
 	 * Equivalent to cuCtxGetDevice.
 	 * @return The device associated with the current context.
 	 */
-	public static Device getCurrentDevice() {
+	protected static Device getCurrentDevice() {
 		CPint result = new CPint();
 		Util.safeCall(Cuda.cuCtxGetDevice(result.cast()));
 		return Device.getDevice(result.value());
@@ -80,17 +80,8 @@ public class Context {
 	 * 
 	 * This method throws an exception if one of the tasks fails.
 	 */
-	public static void syncWithCurrent() {
+	protected static void syncWithCurrent() {
 		Util.safeCall(Cuda.cuCtxSynchronize());
-	}
-	
-	/**
-	 * Load the given Cubin onto the GPU, to ready it for use.
-	 * @param cubin The Cubin object to be loaded.
-	 * @return The resulting module on the GPU.
-	 */
-	public static Module loadCubin(Cubin cubin) {
-		return new Module(cubin);
 	}
 	
 	protected CUPContext context;
@@ -134,6 +125,24 @@ public class Context {
 		if (context != null) throw new IllegalStateException("Context allready created.");
 		context = new CUPContext();
 		Util.safeCall(Cuda.cuCtxCreate(context.cast(), flag.flag.swigValue(), deviceID));
+		popCurrent();
+	}
+	
+	public void synchronise() {
+		synchronized (this) {
+			push();
+			syncWithCurrent();
+			popCurrent();
+		}
+	}
+	
+	/**
+	 * Load the given Cubin onto the GPU, to ready it for use.
+	 * @param cubin The Cubin object to be loaded.
+	 * @return The resulting module on the GPU.
+	 */
+	public Module loadCubin(Cubin cubin) {
+		return new Module(this, cubin);
 	}
 	
 	/**
@@ -141,7 +150,7 @@ public class Context {
 	 * 
 	 * This context must be associated with the calling thread.
 	 */
-	public void detach() {
+	protected void detach() {
 		Util.safeCall(Cuda.cuCtxDetach(context.value()));
 	}
 	
@@ -150,7 +159,7 @@ public class Context {
 	 * 
 	 * The context must be floating (not associated with any thread).
 	 */
-	public void push() {
+	protected void push() {
 		Util.safeCall(Cuda.cuCtxPushCurrent(context.value()));
 	}
 	

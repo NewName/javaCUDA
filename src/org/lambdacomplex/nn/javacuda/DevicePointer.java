@@ -41,12 +41,13 @@ public class DevicePointer {
 	 * @param data The NativeByteArray object containing the data.
 	 * @return A pointer to the data on the device.
 	 */
-	public static DevicePointer toDevice(NativeByteArray data) {
-		DevicePointer result = new DevicePointer(data.getByteSize());
+	public static DevicePointer toDevice(Context ctx, NativeByteArray data) {
+		DevicePointer result = new DevicePointer(ctx, data.getByteSize());
 		result.copyFrom(data);
 		return result;
 	}
 	
+	private Context context;
 	private CUDevicePointer devPtr;
 	private long size;
 	protected boolean freed;
@@ -55,10 +56,15 @@ public class DevicePointer {
 	 * Allocate memory on the device. This pointer will then point to it.
 	 * @param size The amount of memory to allocate in bytes.
 	 */
-	public DevicePointer(long size) {
+	protected DevicePointer(Context ctx, long size) {
+		context = ctx;
 		devPtr = new CUDevicePointer();
 		this.size = size;
-		Util.safeCall(Cuda.cuMemAlloc(devPtr.cast(), size));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemAlloc(devPtr.cast(), size));
+			Context.popCurrent();
+		}
 		freed = false;
 	}
 
@@ -83,7 +89,11 @@ public class DevicePointer {
 		if (data.getByteSize() > size) throw new IllegalArgumentException();
 		
 		SWIGTYPE_p_void voidData = Cuda.toPVoid(data.getNativePointer());
-		Util.safeCall(Cuda.cuMemcpyHtoD(devPtr.value(), voidData, size));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemcpyHtoD(devPtr.value(), voidData, size));
+			Context.popCurrent();
+		}
 	}
 	
 	/**
@@ -95,14 +105,23 @@ public class DevicePointer {
 		if (dest.getByteSize() < size) throw new IllegalArgumentException();
 		
 		SWIGTYPE_p_void voidDest = Cuda.toPVoid(dest.getNativePointer());
-		Util.safeCall(Cuda.cuMemcpyDtoH(voidDest, devPtr.value(), size));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemcpyDtoH(voidDest, devPtr.value(), size));
+			Context.popCurrent();
+		}
 	}
 	
 	/**
 	 * Deallocate the memory pointed to by this pointer.
 	 */
 	public void free() {
-		Util.safeCall(Cuda.cuMemFree(devPtr.value()));
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemFree(devPtr.value()));
+			Context.popCurrent();
+		}
+		freed = true;
 	}
 	
 	/*public void finalize() throws Throwable {
