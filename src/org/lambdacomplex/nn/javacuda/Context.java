@@ -81,6 +81,7 @@ public class Context {
 	}
 	
 	protected CUPContext context;
+	private Stream zeroStream = null;
 	
 	protected Context(int deviceID, Flags flag) {
 		context = new CUPContext();
@@ -135,6 +136,22 @@ public class Context {
 	 */
 	protected void push() {
 		Util.safeCall(Cuda.cuCtxPushCurrent(context.value()));
+	}
+	
+	public void run(Runnable r) {
+		push();
+		r.run();
+		popCurrent();
+	}
+	
+	public Stream getDefaultStream() {
+		if (zeroStream == null) {
+			CUPStream result = new CUPStream();
+			result.assign(Cuda.toStream(0));
+			zeroStream = new Stream(this, result);
+		}
+		
+		return zeroStream;
 	}
 	
 	/**

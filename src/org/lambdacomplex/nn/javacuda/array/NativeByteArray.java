@@ -20,6 +20,7 @@
 package org.lambdacomplex.nn.javacuda.array;
 
 import org.lambdacomplex.nn.javacuda.swig.*;
+import org.lambdacomplex.nn.javacuda.*;
 
 public class NativeByteArray {
 	static {
@@ -28,10 +29,33 @@ public class NativeByteArray {
 	
 	private CUByteArray backer;
 	private int size;
+	private boolean pageLocked;
+	private Context context;
+	
+	public enum Type {
+		Paged,
+		PageLocked
+	}
 	
 	public NativeByteArray(int size) {
 		backer = new CUByteArray(size);
 		this.size = size;
+		pageLocked = false;
+	}
+	
+	public NativeByteArray(Context ctx, final int size) {
+		final CUPvoid mem = new CUPvoid();
+		ctx.run(new Runnable(){
+			public void run() { 
+				CUresult result = Cuda.cuMemAllocHost(mem.cast(), size);
+				if ( result != CUresult.CUDA_SUCCESS)
+					throw new CudaAPIError(result.toString());
+			}
+		});
+		backer = CUByteArray.frompointer(Cuda.toByteArray(mem.value()));
+		context = ctx;
+		this.size = size;
+		pageLocked = true;
 	}
 	
 	public void setByte(int index, byte b) {
@@ -52,5 +76,33 @@ public class NativeByteArray {
 	
 	public int getByteSize() {
 		return size;
+	}
+	
+	public boolean isFreed() {
+		return backer == null;
+	}
+	
+	public void free() {
+		if (isFreed()) return;
+		if (!pageLocked) {
+			backer.delete();
+		} else {
+			context.run(new Runnable(){
+				public void run() { 
+					CUresult result = Cuda.cuMemFreeHost(Cuda.toPVoid(backer.cast()));
+					if ( result != CUresult.CUDA_SUCCESS)
+						throw new CudaAPIError(result.toString());
+				}
+			});
+		}
+		backer = null;
+	}
+	
+	public void finalize() throws Throwable {
+		try {
+			free();
+		} finally {
+			super.finalize();
+		}
 	}
 }

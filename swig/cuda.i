@@ -60,8 +60,14 @@
   }
 %}
 
+%inline %{
+typedef void* void_p;
+%}
+
+
 %pointer_class(int,CPint);
 %pointer_class(float,CPfloat);
+%pointer_class(void_p,CUPvoid);
 %pointer_class(CUcontext,CUPContext);
 %pointer_class(CUmodule,CUPModule);
 %pointer_class(CUfunction,CUPFunction);
@@ -70,6 +76,6 @@
 %pointer_class(CUevent,CUPEvent);
 
 
-
+%pointer_cast(void *, signed char *, toByteArray);
 %pointer_cast(signed char *, void *, toPVoid);
 %pointer_cast(int, CUstream, toStream);

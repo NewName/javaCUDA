@@ -19,11 +19,17 @@
 
 package org.lambdacomplex.nn.javacuda.array;
 
+import org.lambdacomplex.nn.javacuda.*;
+
 public class NativeFloatArray extends NativeIntArray {
 	
 	public NativeFloatArray(int size) {
 		// float is same size as int
 		super(size);
+	}
+	
+	public NativeFloatArray(Context ctx, int size) {
+		super(ctx, size);
 	}
 	
 	public void setFloat(int index, float f) {

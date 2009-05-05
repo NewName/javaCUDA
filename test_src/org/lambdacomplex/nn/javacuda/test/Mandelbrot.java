@@ -169,18 +169,4 @@ public class Mandelbrot {
 		;
 		return new StringReader(kernel);
 	}
-	
-	public static void arrayTest() {
-		Device.getMaxGFlopsDevice();
-		int[] test = new int[]{1,2,3};
-		NativeIntArray arry = new NativeIntArray(test.length);
-		for (int i=0;i<test.length; i++) {
-			arry.setInt(i, test[i]);
-		}
-		int[] test2 = new int[test.length];
-		for (int i=0;i<arry.getSize();i++) {
-			test2[i] = arry.getInt(i);
-			System.out.println(test2[i]);
-		}
-	}
 }

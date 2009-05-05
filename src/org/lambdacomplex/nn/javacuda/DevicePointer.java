@@ -30,11 +30,6 @@ import org.lambdacomplex.nn.javacuda.swig.*;
  *
  */
 public class DevicePointer {
-	/*public static DevicePointer toDevice(byte[] data) {
-		DevicePointer result = new DevicePointer(data.length);
-		result.copy(data);
-		return result;
-	}*/
 	
 	/**
 	 * Automatically allocate space for and move the data inside the given native byte array to the device.
@@ -44,6 +39,12 @@ public class DevicePointer {
 	public static DevicePointer toDevice(Context ctx, NativeByteArray data) {
 		DevicePointer result = new DevicePointer(ctx, data.getByteSize());
 		result.copyFrom(data);
+		return result;
+	}
+	
+	public static DevicePointer toDeviceAsync(Context ctx, NativeByteArray data, Stream stream) {
+		DevicePointer result = new DevicePointer(ctx, data.getByteSize());
+		result.copyFromAsync(data, stream);
 		return result;
 	}
 	
@@ -66,18 +67,6 @@ public class DevicePointer {
 			Context.popCurrent();
 		}
 	}
-
-	/*public void copy(byte[] data) {
-		if (data.length > size) throw new IllegalArgumentException();
-
-		//SWIGTYPE_p_void voidData = Cuda.toPVoid(data);
-		CUByteArray b = new CUByteArray(data.length);
-		for (int i = 0; i <data.length; i++) b.setitem(i, data[i]);
-		SWIGTYPE_p_void voidData = Cuda.toPVoid(b.cast());
-		
-		Util.safeCall(Cuda.cuMemcpyHtoD(devPtr.value(), voidData, 1 + 0*size));
-		
-	}*/
 	
 	/**
 	 * Move the data inside the given native byte array into the memory pointed to by this pointer.
@@ -95,6 +84,18 @@ public class DevicePointer {
 		}
 	}
 	
+	public void copyFromAsync(NativeByteArray data, Stream stream) {
+		if (isFreed()) throw new IllegalStateException();
+		if (data.getByteSize() > size) throw new IllegalArgumentException();
+		
+		SWIGTYPE_p_void voidData = Cuda.toPVoid(data.getNativePointer());
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemcpyHtoDAsync(devPtr.value(), voidData, size, stream.getValue().value()));
+			Context.popCurrent();
+		}
+	}
+	
 	/**
 	 * Move the data pointed to by this pointer into the given native byte array.
 	 * @param dest The NativeByteArray object to copy the data into.
@@ -107,6 +108,18 @@ public class DevicePointer {
 		synchronized (context) {
 			context.push();
 			Util.safeCall(Cuda.cuMemcpyDtoH(voidDest, devPtr.value(), size));
+			Context.popCurrent();
+		}
+	}
+	
+	public void copyToAsync(NativeByteArray dest, Stream stream) {
+		if (isFreed()) throw new IllegalStateException();
+		if (dest.getByteSize() < size) throw new IllegalArgumentException();
+		
+		SWIGTYPE_p_void voidDest = Cuda.toPVoid(dest.getNativePointer());
+		synchronized (context) {
+			context.push();
+			Util.safeCall(Cuda.cuMemcpyDtoHAsync(voidDest, devPtr.value(), size, stream.getValue().value()));
 			Context.popCurrent();
 		}
 	}

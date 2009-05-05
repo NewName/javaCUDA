@@ -19,13 +19,18 @@
 
 package org.lambdacomplex.nn.javacuda.array;
 
-import org.lambdacomplex.nn.javacuda.NativeStruct;
+import org.lambdacomplex.nn.javacuda.*;
 
 public class NativeStructArray<T extends NativeStruct> extends NativeByteArray {
 	private int length;
 	
 	public NativeStructArray(int size, int length) {
 		super(size * length);
+		this.length = length;
+	}
+	
+	public NativeStructArray(Context ctx, int size, int length) {
+		super(ctx, size*length);
 		this.length = length;
 	}
 	

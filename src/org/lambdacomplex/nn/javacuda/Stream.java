@@ -45,8 +45,9 @@ public class Stream {
 		}
 	}
 	
-	protected Stream(CUPStream st) {
+	protected Stream(Context ctx, CUPStream st) {
 		stream = st;
+		context = ctx;
 	}
 	
 	public boolean isDestroyed() {
@@ -228,14 +229,6 @@ public class Stream {
 	 */
 	public Event createEvent() {
 		return new Event(this);
-	}
-	
-	/**
-	 * Create an event associated with the default stream.
-	 * @return The new Event.
-	 */
-	public static Event createDefaultEvent() {
-		return new Event(Util.zeroStream());
 	}
 	
 	protected CUPStream getValue() {

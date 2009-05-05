@@ -91,7 +91,7 @@ public class Function {
 	 * @param args An array containing the arguments for the function.
 	 */
 	public void call(Argument[] args) {
-		call(args, Util.zeroStream());
+		call(args, context.getDefaultStream());
 	}
 	
 	/**

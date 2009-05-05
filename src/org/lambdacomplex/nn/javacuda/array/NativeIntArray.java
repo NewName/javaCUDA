@@ -19,11 +19,17 @@
 
 package org.lambdacomplex.nn.javacuda.array;
 
+import org.lambdacomplex.nn.javacuda.*;
+
 public class NativeIntArray extends NativeByteArray {
 	public static final int intSize = 4;
 	
 	public NativeIntArray(int size) {
 		super(size*intSize);
+	}
+	
+	public NativeIntArray(Context ctx, int size) {
+		super(ctx,size*intSize);
 	}
 	
 	public void setInt(int index, int i) {
