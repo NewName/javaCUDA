@@ -144,6 +144,10 @@ public class Context {
 		popCurrent();
 	}
 	
+	public Stream createStream() {
+		return new Stream(this);
+	}
+	
 	public Stream getDefaultStream() {
 		if (zeroStream == null) {
 			CUPStream result = new CUPStream();

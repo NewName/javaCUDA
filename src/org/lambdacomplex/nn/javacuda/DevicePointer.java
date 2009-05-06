@@ -79,7 +79,7 @@ public class DevicePointer {
 		SWIGTYPE_p_void voidData = Cuda.toPVoid(data.getNativePointer());
 		synchronized (context) {
 			context.push();
-			Util.safeCall(Cuda.cuMemcpyHtoD(devPtr.value(), voidData, size));
+			Util.safeCall(Cuda.cuMemcpyHtoD(devPtr.value(), voidData, data.getByteSize()));
 			Context.popCurrent();
 		}
 	}
@@ -91,7 +91,7 @@ public class DevicePointer {
 		SWIGTYPE_p_void voidData = Cuda.toPVoid(data.getNativePointer());
 		synchronized (context) {
 			context.push();
-			Util.safeCall(Cuda.cuMemcpyHtoDAsync(devPtr.value(), voidData, size, stream.getValue().value()));
+			Util.safeCall(Cuda.cuMemcpyHtoDAsync(devPtr.value(), voidData, data.getByteSize(), stream.getValue().value()));
 			Context.popCurrent();
 		}
 	}

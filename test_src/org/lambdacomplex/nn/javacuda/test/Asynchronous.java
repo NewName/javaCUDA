@@ -10,7 +10,7 @@ public class Asynchronous {
 		doit();
 	}
 	
-	private static int inputSize = 2*1024;
+	private static int inputSize = 2*1024*1024;
 	
 	public static void doit() {
 		System.out.println("Allocating device");
@@ -36,16 +36,16 @@ public class Asynchronous {
 			input.setInt(i, i);
 		}
 		
-		long startTime = System.currentTimeMillis();
-		Stream.Event start = ctx.getDefaultStream().createEvent();
+		System.out.println("Loading input and calling kernel");
 		
-		System.out.println("Loading input");
-		DevicePointer input_gpu = DevicePointer.toDeviceAsync(ctx, input, ctx.getDefaultStream());
-		
-		System.out.println("Calling kernel");
 		function.setBlockSize(new Function.BlockSize(256,1,1));
 		function.setGridSize(new Function.GridSize(inputSize/256,1));
 		
+		long startTime = System.nanoTime();
+		Stream.Event start = ctx.getDefaultStream().createEvent();		
+			
+		DevicePointer input_gpu = DevicePointer.toDeviceAsync(ctx, input, ctx.getDefaultStream());
+
 		function.call(new Function.Argument[]{
 				new Function.PointerArgument(input_gpu),
 				new Function.IntegerArgument(25)
@@ -53,15 +53,16 @@ public class Asynchronous {
 		
 		input_gpu.copyToAsync(input, ctx.getDefaultStream());
 		
-		long stopTime = System.currentTimeMillis();
+		long stopTime = System.nanoTime();
 		Stream.Event stop = ctx.getDefaultStream().createEvent();
 		
 		long counter = 0;
 		while (!stop.isReached()) counter++;
 		
 		float gpuTime = Stream.Event.elapsedTime(start, stop);
+		float cpuTime = (float)(stopTime - startTime)/1000000;
 		
-		System.out.println("Time spent in CPU: " + (stopTime - startTime));
+		System.out.println("Time spent in CPU: " + cpuTime);
 		System.out.println("Time spent in GPU: " + gpuTime);
 		System.out.println("Number of CPU cycles elapsed waiting :" + counter);
 		
