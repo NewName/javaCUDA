@@ -100,15 +100,13 @@ public class Context {
 		SCHEDULER_YIELD (CUctx_flags.CU_CTX_SCHED_YIELD);
 		
 		protected CUctx_flags flag;
-		Flags (CUctx_flags f) { flag = f; }
+		private Flags (CUctx_flags f) { flag = f; }
 	}
 	
-	public void synchronise() {
-		synchronized (this) {
-			push();
-			syncWithCurrent();
-			popCurrent();
-		}
+	public synchronized void synchronise() {
+		push();
+		syncWithCurrent();
+		popCurrent();
 	}
 	
 	/**
@@ -138,7 +136,7 @@ public class Context {
 		Util.safeCall(Cuda.cuCtxPushCurrent(context.value()));
 	}
 	
-	public void run(Runnable r) {
+	public synchronized void run(Runnable r) {
 		push();
 		r.run();
 		popCurrent();
@@ -161,14 +159,12 @@ public class Context {
 	/**
 	 * Destroy this context.
 	 */
-	public void destroy() {
-		synchronized (this) {
-			if (context == null) return;
-			push();
-			Util.safeCall(Cuda.cuCtxDestroy(context.value()));
-			context.delete();
-			context = null;
-		}
+	public synchronized void destroy() {
+		if (context == null) return;
+		push();
+		Util.safeCall(Cuda.cuCtxDestroy(context.value()));
+		context.delete();
+		context = null;
 	}
 	
 	public void finalize() throws Throwable {

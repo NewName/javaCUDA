@@ -74,6 +74,7 @@ typedef void* void_p;
 %pointer_class(CUdeviceptr,CUDevicePointer);
 %pointer_class(CUstream,CUPStream);
 %pointer_class(CUevent,CUPEvent);
+%pointer_class(CUarray,CUPArray);
 
 
 %pointer_cast(void *, signed char *, toByteArray);
